@@ -12,7 +12,7 @@ module Overrides
 
         @resource.tokens[@client_id] = {
           token: BCrypt::Password.create(@token),
-          expiry: (Time.now + @resource.token_lifespan).to_i
+          expiry: (Time.current + @resource.token_lifespan).to_i
         }
         @resource.save
 

@@ -160,7 +160,7 @@ module DeviseTokenAuth
       # create token info
       @client_id = SecureRandom.urlsafe_base64(nil, false)
       @token     = SecureRandom.urlsafe_base64(nil, false)
-      @expiry    = (Time.now + @resource.token_lifespan).to_i
+      @expiry    = (Time.current + @resource.token_lifespan).to_i
       @config    = omniauth_params['config_name']
     end
 

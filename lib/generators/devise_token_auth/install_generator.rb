@@ -29,7 +29,7 @@ module DeviseTokenAuth
       else
         inclusion = "include DeviseTokenAuth::Concerns::User"
         unless parse_file_for_line(fname, inclusion)
-          
+
           active_record_needle = (Rails::VERSION::MAJOR == 5) ? 'ApplicationRecord' : 'ActiveRecord::Base'
           inject_into_file fname, after: "class #{user_class} < #{active_record_needle}\n" do <<-'RUBY'
   # Include default devise modules.
@@ -101,7 +101,7 @@ module DeviseTokenAuth
     private
 
     def self.next_migration_number(path)
-      Time.now.utc.strftime("%Y%m%d%H%M%S")
+      Time.current.utc.strftime("%Y%m%d%H%M%S")
     end
 
     def insert_after_line(filename, line, str)

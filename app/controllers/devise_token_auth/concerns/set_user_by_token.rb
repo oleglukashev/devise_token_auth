@@ -12,7 +12,7 @@ module DeviseTokenAuth::Concerns::SetUserByToken
 
   # keep track of request duration
   def set_request_start
-    @request_started_at = Time.now
+    @request_started_at = Time.current
     @used_auth_by_token = true
 
     # initialize instance variables

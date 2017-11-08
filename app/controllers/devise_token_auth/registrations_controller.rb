@@ -6,8 +6,8 @@ module DeviseTokenAuth
     skip_after_action :update_auth_header, :only => [:create, :destroy]
 
     def create
-      @resource            = resource_class.new(sign_up_params)
-      @resource.provider   = provider
+      @resource = resource_class.new(sign_up_params)
+      @resource.provider = provider
 
       # honor devise configuration for case_insensitive_keys
       if resource_class.case_insensitive_keys.include?(:email)
@@ -24,13 +24,13 @@ module DeviseTokenAuth
 
       # success redirect url is required
       if resource_class.devise_modules.include?(:confirmable) && !@redirect_url
-        return render_create_error_missing_confirm_success_url
+        raise MissingRedirectUrlError
       end
 
       # if whitelist is set, validate redirect_url against whitelist
       if DeviseTokenAuth.redirect_whitelist
         unless DeviseTokenAuth::Url.whitelisted?(@redirect_url)
-          return render_create_error_redirect_url_not_allowed
+          raise RedirectUrlNotAllowedError
         end
       end
 
@@ -42,63 +42,63 @@ module DeviseTokenAuth
           # Fix duplicate e-mails by disabling Devise confirmation e-mail
           @resource.skip_confirmation_notification!
         end
-        if @resource.save
-          yield @resource if block_given?
 
-          unless @resource.confirmed?
-            # user will require email authentication
-            @resource.send_confirmation_instructions({
-              client_config: params[:config_name],
-              redirect_url: @redirect_url
-            })
-
-          else
-            # email auth has been bypassed, authenticate user
-            @client_id = SecureRandom.urlsafe_base64(nil, false)
-            @token     = SecureRandom.urlsafe_base64(nil, false)
-
-            @resource.tokens[@client_id] = {
-              token: BCrypt::Password.create(@token),
-              expiry: (Time.now + @resource.token_lifespan).to_i
-            }
-
-            @resource.save!
-
-            update_auth_header
-          end
-          render_create_success
-        else
+        unless @resource.save
           clean_up_passwords @resource
-          render_create_error
+          raise ActiveRecord::RecordInvalid.new(@resource)
         end
+
+        yield @resource if block_given?
+
+        unless @resource.confirmed?
+          # user will require email authentication
+          @resource.send_confirmation_instructions({
+            client_config: params[:config_name],
+            redirect_url: @redirect_url
+          })
+
+        else
+          # email auth has been bypassed, authenticate user
+          @client_id = SecureRandom.urlsafe_base64(nil, false)
+          @token     = SecureRandom.urlsafe_base64(nil, false)
+
+          @resource.tokens[@client_id] = {
+            token: BCrypt::Password.create(@token),
+            expiry: (Time.current + @resource.token_lifespan).to_i
+          }
+
+          @resource.save!
+
+          update_auth_header
+        end
+
+        render json: resource_data, status: :created
       rescue ActiveRecord::RecordNotUnique
         clean_up_passwords @resource
-        render_create_error_email_already_exists
+        raise EmailAlreadyExistsError
       end
     end
 
     def update
-      if @resource
-        if @resource.send(resource_update_method, account_update_params)
-          yield @resource if block_given?
-          render_update_success
-        else
-          render_update_error
-        end
-      else
-        render_update_error_user_not_found
+      raise UserNotFoundError unless @resource
+
+      unless @resource.send(resource_update_method, account_update_params)
+        raise ActiveRecord::RecordInvalid.new(@resource)
       end
+
+      yield @resource if block_given?
+
+      render json: resource_data, status: :ok
     end
 
     def destroy
-      if @resource
-        @resource.destroy
-        yield @resource if block_given?
+      raise UserNotFoundError unless @resource
 
-        render_destroy_success
-      else
-        render_destroy_error
-      end
+      @resource.destroy!
+
+      yield @resource if block_given?
+
+      render nothing: true, status: :no_content
     end
 
     def sign_up_params
@@ -127,7 +127,7 @@ module DeviseTokenAuth
       }, status: 422
     end
 
-    def render_create_success
+    def
       render json: {
         status: 'success',
         data:   resource_data
@@ -150,7 +150,6 @@ module DeviseTokenAuth
       }, status: 422
     end
 
-    def render_update_success
       render json: {
         status: 'success',
         data:   resource_data

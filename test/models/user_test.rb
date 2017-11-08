@@ -84,7 +84,7 @@ class UserTest < ActiveSupport::TestCase
       test 'should properly indicate whether token is current' do
         assert @resource.token_is_current?(@token, @client_id)
         # we want to update the expiry without forcing a cleanup (see below)
-        @resource.tokens[@client_id]['expiry'] = Time.now.to_i - 10.seconds
+        @resource.tokens[@client_id]['expiry'] = Time.current.to_i - 10.seconds
         refute @resource.token_is_current?(@token, @client_id)
       end
     end
@@ -111,7 +111,7 @@ class UserTest < ActiveSupport::TestCase
       test 'works per user' do
         assert @resource.token_is_current?(@token_global, @client_id_global)
 
-        time = Time.now.to_i
+        time = Time.current.to_i
         expiry_global = @resource.tokens[@client_id_global]['expiry']
 
         assert expiry_global > time + DeviseTokenAuth.token_lifespan - 5.seconds

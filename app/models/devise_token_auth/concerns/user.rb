@@ -80,7 +80,7 @@ module DeviseTokenAuth::Concerns::User
 
     # override devise method to include additional info as opts hash
     def send_reset_password_instructions(opts=nil)
-      token = set_reset_password_token
+      token = set_reset_password_token!
 
       opts ||= {}
 
@@ -152,7 +152,7 @@ module DeviseTokenAuth::Concerns::User
       expiry && token &&
 
       # ensure that the token has not yet expired
-      DateTime.strptime(expiry.to_s, '%s') > Time.now &&
+      DateTime.strptime(expiry.to_s, '%s') > Time.current &&
 
       # ensure that the token is valid
       DeviseTokenAuth::Concerns::User.tokens_match?(token_hash, token)
@@ -172,7 +172,7 @@ module DeviseTokenAuth::Concerns::User
       updated_at && last_token &&
 
       # ensure that previous token falls within the batch buffer throttle time of the last request
-      Time.parse(updated_at) > Time.now - DeviseTokenAuth.batch_request_buffer_throttle &&
+      Time.parse(updated_at) > Time.current - DeviseTokenAuth.batch_request_buffer_throttle &&
 
       # ensure that the token is valid
       ::BCrypt::Password.new(last_token) == token
@@ -186,7 +186,7 @@ module DeviseTokenAuth::Concerns::User
     last_token ||= nil
     token        = SecureRandom.urlsafe_base64(nil, false)
     token_hash   = ::BCrypt::Password.create(token)
-    expiry       = (Time.now + token_lifespan).to_i
+    expiry       = (Time.current + token_lifespan).to_i
 
     if self.tokens[client_id] && self.tokens[client_id]['token']
       last_token = self.tokens[client_id]['token']
@@ -196,7 +196,7 @@ module DeviseTokenAuth::Concerns::User
       token:      token_hash,
       expiry:     expiry,
       last_token: last_token,
-      updated_at: Time.now
+      updated_at: Time.current
     }
 
     return build_auth_header(token, client_id)
@@ -237,7 +237,7 @@ module DeviseTokenAuth::Concerns::User
 
 
   def extend_batch_buffer(token, client_id)
-    self.tokens[client_id]['updated_at'] = Time.now
+    self.tokens[client_id]['updated_at'] = Time.current
 
     return build_auth_header(token, client_id)
   end
@@ -266,7 +266,7 @@ module DeviseTokenAuth::Concerns::User
     if self.tokens
       self.tokens.delete_if do |cid, v|
         expiry = v[:expiry] || v["expiry"]
-        DateTime.strptime(expiry.to_s, '%s') < Time.now
+        DateTime.strptime(expiry.to_s, '%s') < Time.current
       end
     end
   end

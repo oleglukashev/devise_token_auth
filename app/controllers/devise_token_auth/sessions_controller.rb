@@ -14,16 +14,18 @@ module DeviseTokenAuth
 
       @resource = nil
       if field
-        q_value = get_case_insensitive_field_from_resource_params(field)
+        query_value = get_case_insensitive_field_from_resource_params(field)
 
-        @resource = find_resource(field, q_value)
+        @resource = find_resource(field, query_value)
       end
 
-      if @resource && valid_params?(field, q_value) && (!@resource.respond_to?(:active_for_authentication?) || @resource.active_for_authentication?)
+      if @resource && valid_params?(field, query_value) &&
+        (!@resource.respond_to?(:active_for_authentication?) ||
+        @resource.active_for_authentication?)
+
         valid_password = @resource.valid_password?(resource_params[:password])
         if (@resource.respond_to?(:valid_for_authentication?) && !@resource.valid_for_authentication? { valid_password }) || !valid_password
-          render_create_error_bad_credentials
-          return
+          raise BadCredentialsError
         end
         # create client id
         @client_id = SecureRandom.urlsafe_base64(nil, false)
@@ -31,7 +33,7 @@ module DeviseTokenAuth
 
         @resource.tokens[@client_id] = {
           token: BCrypt::Password.create(@token),
-          expiry: (Time.now + @resource.token_lifespan).to_i
+          expiry: (Time.current + @resource.token_lifespan).to_i
         }
         @resource.save
 
@@ -39,11 +41,11 @@ module DeviseTokenAuth
 
         yield @resource if block_given?
 
-        render_create_success
+        render json: resource_data(resource_json: @resource.token_validation_response)
       elsif @resource && !(!@resource.respond_to?(:active_for_authentication?) || @resource.active_for_authentication?)
-        render_create_error_not_confirmed
+        raise EmailIsNotConfirmedError
       else
-        render_create_error_bad_credentials
+        raise BadCredentialsError
       end
     end
 
@@ -53,16 +55,16 @@ module DeviseTokenAuth
       client_id = remove_instance_variable(:@client_id) if @client_id
       remove_instance_variable(:@token) if @token
 
-      if user && client_id && user.tokens[client_id]
-        user.tokens.delete(client_id)
-        user.save!
-
-        yield user if block_given?
-
-        render_destroy_success
-      else
-        render_destroy_error
+      unless user && client_id && user.tokens[client_id]
+        raise UserNotFoundError
       end
+
+      user.tokens.delete(client_id)
+      user.save!
+
+      yield user if block_given?
+
+      render nothing: true, status: :no_content
     end
 
     protected
@@ -89,7 +91,7 @@ module DeviseTokenAuth
         auth_val.downcase!
       end
 
-      return {
+      {
         key: auth_key,
         val: auth_val
       }
