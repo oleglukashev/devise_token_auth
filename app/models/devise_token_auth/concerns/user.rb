@@ -80,7 +80,7 @@ module DeviseTokenAuth::Concerns::User
 
     # override devise method to include additional info as opts hash
     def send_reset_password_instructions(opts=nil)
-      token = set_reset_password_token!
+      token = set_reset_password_token
 
       opts ||= {}
 

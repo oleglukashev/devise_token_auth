@@ -11,7 +11,7 @@ module DeviseTokenAuth
 
       # honor devise configuration for case_insensitive_keys
       if resource_class.case_insensitive_keys.include?(:email)
-        @resource.email = sign_up_params[:email].try :downcase
+        @resource.email = sign_up_params[:email].try(:downcase)
       else
         @resource.email = sign_up_params[:email]
       end
@@ -34,49 +34,44 @@ module DeviseTokenAuth
         end
       end
 
-      begin
-        # override email confirmation, must be sent manually from ctrl
-        resource_class.set_callback("create", :after, :send_on_create_confirmation_instructions)
-        resource_class.skip_callback("create", :after, :send_on_create_confirmation_instructions)
-        if @resource.respond_to? :skip_confirmation_notification!
-          # Fix duplicate e-mails by disabling Devise confirmation e-mail
-          @resource.skip_confirmation_notification!
-        end
-
-        unless @resource.save
-          clean_up_passwords @resource
-          raise ActiveRecord::RecordInvalid.new(@resource)
-        end
-
-        yield @resource if block_given?
-
-        unless @resource.confirmed?
-          # user will require email authentication
-          @resource.send_confirmation_instructions({
-            client_config: params[:config_name],
-            redirect_url: @redirect_url
-          })
-
-        else
-          # email auth has been bypassed, authenticate user
-          @client_id = SecureRandom.urlsafe_base64(nil, false)
-          @token     = SecureRandom.urlsafe_base64(nil, false)
-
-          @resource.tokens[@client_id] = {
-            token: BCrypt::Password.create(@token),
-            expiry: (Time.current + @resource.token_lifespan).to_i
-          }
-
-          @resource.save!
-
-          update_auth_header
-        end
-
-        render json: resource_data, status: :created
-      rescue ActiveRecord::RecordNotUnique
-        clean_up_passwords @resource
-        raise EmailAlreadyExistsError
+      # override email confirmation, must be sent manually from ctrl
+      resource_class.set_callback("create", :after, :send_on_create_confirmation_instructions)
+      resource_class.skip_callback("create", :after, :send_on_create_confirmation_instructions)
+      if @resource.respond_to? :skip_confirmation_notification!
+        # Fix duplicate e-mails by disabling Devise confirmation e-mail
+        @resource.skip_confirmation_notification!
       end
+
+      unless @resource.save
+        clean_up_passwords @resource
+        raise ActiveRecord::RecordInvalid.new(@resource)
+      end
+
+      yield @resource if block_given?
+
+      unless @resource.confirmed?
+        @resource.send_confirmation_instructions(
+          client_config: params[:config_name],
+          redirect_url: @redirect_url
+        )
+      else
+        @client_id = SecureRandom.urlsafe_base64(nil, false)
+        @token = SecureRandom.urlsafe_base64(nil, false)
+
+        @resource.tokens[@client_id] = {
+          token: BCrypt::Password.create(@token),
+          expiry: (Time.current + @resource.token_lifespan).to_i
+        }
+
+        @resource.save!
+
+        update_auth_header
+      end
+
+      render json: resource_data, status: :created
+    rescue ActiveRecord::RecordNotUnique
+      clean_up_passwords @resource
+      raise EmailAlreadyExistsError
     end
 
     def update
@@ -127,13 +122,6 @@ module DeviseTokenAuth
       }, status: 422
     end
 
-    def
-      render json: {
-        status: 'success',
-        data:   resource_data
-      }
-    end
-
     def render_create_error
       render json: {
         status: 'error',
@@ -148,12 +136,6 @@ module DeviseTokenAuth
         data:   resource_data,
         errors: [I18n.t("devise_token_auth.registrations.email_already_exists", email: @resource.email)]
       }, status: 422
-    end
-
-      render json: {
-        status: 'success',
-        data:   resource_data
-      }
     end
 
     def render_update_error
