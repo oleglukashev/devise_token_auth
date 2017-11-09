@@ -172,7 +172,7 @@ module DeviseTokenAuth::Concerns::User
       updated_at && last_token &&
 
       # ensure that previous token falls within the batch buffer throttle time of the last request
-      Time.parse(updated_at) > Time.current - DeviseTokenAuth.batch_request_buffer_throttle &&
+      Time.zone.parse(updated_at) > Time.current - DeviseTokenAuth.batch_request_buffer_throttle &&
 
       # ensure that the token is valid
       ::BCrypt::Password.new(last_token) == token
@@ -188,20 +188,52 @@ module DeviseTokenAuth::Concerns::User
     token_hash   = ::BCrypt::Password.create(token)
     expiry       = (Time.current + token_lifespan).to_i
 
-    if self.tokens[client_id] && self.tokens[client_id]['token']
-      last_token = self.tokens[client_id]['token']
+    if tokens[client_id]
+      if tokens[client_id]['token']
+        last_token = tokens[client_id]['token']
+      end
+      if tokens[client_id]['refresh_token']
+        refresh_token = tokens[client_id]['refresh_token']
+      end
+      if tokens[client_id]['refresh_token_expiry']
+        refresh_token_expiry = tokens[client_id]['refresh_token_expiry']
+      end
     end
 
-    self.tokens[client_id] = {
+    new_tokens_hash = {
       token:      token_hash,
       expiry:     expiry,
       last_token: last_token,
       updated_at: Time.current
     }
 
+    if refresh_token
+      new_tokens_hash['refresh_token'] = refresh_token
+    end
+
+    if refresh_token_expiry
+      new_tokens_hash['refresh_token_expiry'] = refresh_token_expiry
+    end
+
+    self.tokens[client_id] = new_tokens_hash
+
     return build_auth_header(token, client_id)
   end
 
+  def valid_refresh_token?(refresh_token, client_id = 'default')
+    return false unless tokens[client_id]
+
+    refresh_token_is_current?(refresh_token, client_id)
+  end
+
+  def refresh_token_is_current?(refresh_token, client_id)
+    tokens_hash = ActiveSupport::HashWithIndifferentAccess.new(tokens)
+    expiry = tokens_hash[client_id][:refresh_token_expiry]
+    refresh_token_hash = tokens_hash[client_id][:refresh_token]
+
+    expiry && token && Time.at(expiry.to_i) > Time.current &&
+      DeviseTokenAuth::Concerns::User.tokens_match?(refresh_token_hash, refresh_token)
+  end
 
   def build_auth_header(token, client_id='default')
     client_id ||= 'default'

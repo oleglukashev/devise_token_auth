@@ -12,6 +12,7 @@ module DeviseTokenAuth
   mattr_accessor :change_headers_on_each_request,
                  :max_number_of_devices,
                  :token_lifespan,
+                 :refresh_token_lifespan,
                  :batch_request_buffer_throttle,
                  :omniauth_prefix,
                  :default_confirm_success_url,
@@ -26,6 +27,7 @@ module DeviseTokenAuth
   self.change_headers_on_each_request       = true
   self.max_number_of_devices                = 10
   self.token_lifespan                       = 2.weeks
+  self.refresh_token_lifespan               = 6.months
   self.batch_request_buffer_throttle        = 5.seconds
   self.omniauth_prefix                      = '/omniauth'
   self.default_confirm_success_url          = nil
@@ -36,6 +38,7 @@ module DeviseTokenAuth
   self.remove_tokens_after_password_reset   = false
   self.default_callbacks                    = true
   self.headers_names                        = {:'access-token' => 'access-token',
+                                               :'refresh-token' => 'refresh-token',
                                                :'client' => 'client',
                                                :'expiry' => 'expiry',
                                                :'uid' => 'uid',

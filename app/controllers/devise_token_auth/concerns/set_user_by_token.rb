@@ -148,6 +148,6 @@ module DeviseTokenAuth::Concerns::SetUserByToken
     !params[:unbatch] &&
     user.tokens[client_id] &&
     user.tokens[client_id]['updated_at'] &&
-    Time.parse(user.tokens[client_id]['updated_at']) > @request_started_at - DeviseTokenAuth.batch_request_buffer_throttle
+    Time.zone.parse(user.tokens[client_id]['updated_at']) > @request_started_at - DeviseTokenAuth.batch_request_buffer_throttle
   end
 end

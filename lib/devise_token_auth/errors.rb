@@ -72,4 +72,22 @@ module DeviseTokenAuth
       super(status: :unauthorized)
     end
   end
+
+  class UidNotProvidedError < Error
+    def initialize
+      super(status: :not_acceptable)
+    end
+  end
+
+  class ClientNotProvidedError < Error
+    def initialize
+      super(status: :not_acceptable)
+    end
+  end
+
+  class WrongRefreshTokenError < Error
+    def initialize
+      super(status: :unauthorized)
+    end
+  end
 end
