@@ -9,6 +9,7 @@ module ActionDispatch::Routing
       sessions_ctrl          = opts[:controllers][:sessions] || "devise_token_auth/sessions"
       registrations_ctrl     = opts[:controllers][:registrations] || "devise_token_auth/registrations"
       passwords_ctrl         = opts[:controllers][:passwords] || "devise_token_auth/passwords"
+      tokens_ctrl = opts[:controllers][:tokens] || 'devise_token_auth/tokens'
       confirmations_ctrl     = opts[:controllers][:confirmations] || "devise_token_auth/confirmations"
       token_validations_ctrl = opts[:controllers][:token_validations] || "devise_token_auth/token_validations"
       omniauth_ctrl          = opts[:controllers][:omniauth_callbacks] || "devise_token_auth/omniauth_callbacks"
@@ -55,6 +56,7 @@ module ActionDispatch::Routing
         devise_scope mapping_name.to_sym do
           # path to verify token validity
           get "#{full_path}/validate_token", controller: "#{token_validations_ctrl}", action: "validate_token"
+          patch "#{full_path}/token", controller: tokens_ctrl.to_s, action: :update
 
           # omniauth routes. only define if omniauth is installed and not skipped.
           if defined?(::OmniAuth) && !opts[:skip].include?(:omniauth_callbacks)

@@ -184,6 +184,8 @@ module DeviseTokenAuth::Concerns::User
   def create_new_auth_token(client_id=nil)
     client_id  ||= SecureRandom.urlsafe_base64(nil, false)
     last_token ||= nil
+    refresh_token = nil
+    refresh_token_expiry = nil
     token        = SecureRandom.urlsafe_base64(nil, false)
     token_hash   = ::BCrypt::Password.create(token)
     expiry       = (Time.current + token_lifespan).to_i
@@ -204,20 +206,35 @@ module DeviseTokenAuth::Concerns::User
       token:      token_hash,
       expiry:     expiry,
       last_token: last_token,
+      refresh_token: refresh_token,
+      refresh_token_expiry: refresh_token_expiry,
       updated_at: Time.current
     }
-
-    if refresh_token
-      new_tokens_hash['refresh_token'] = refresh_token
-    end
-
-    if refresh_token_expiry
-      new_tokens_hash['refresh_token_expiry'] = refresh_token_expiry
-    end
 
     self.tokens[client_id] = new_tokens_hash
 
     return build_auth_header(token, client_id)
+  end
+
+  def create_new_refresh_token(client_id)
+    unless client_id
+      raise ArgumentError, "client_id must be provided to create new refresh token"
+    end
+
+    refresh_token = SecureRandom.urlsafe_base64(nil, false)
+    refresh_token_hash = ::BCrypt::Password.create(refresh_token)
+    refresh_token_expiry = (Time.current + DeviseTokenAuth.refresh_token_lifespan).to_i
+
+    unless tokens[client_id]
+      raise ArgumentError, "client_id must be already present for this user"
+    end
+
+    new_tokens_hash = tokens[client_id]
+    new_tokens_hash['refresh_token'] = refresh_token_hash
+    new_tokens_hash['refresh_token_expiry'] = refresh_token_expiry
+    self.tokens[client_id] = new_tokens_hash
+
+    return refresh_token
   end
 
   def valid_refresh_token?(refresh_token, client_id = 'default')
@@ -231,7 +248,7 @@ module DeviseTokenAuth::Concerns::User
     expiry = tokens_hash[client_id][:refresh_token_expiry]
     refresh_token_hash = tokens_hash[client_id][:refresh_token]
 
-    expiry && token && Time.at(expiry.to_i) > Time.current &&
+    expiry && refresh_token && Time.at(expiry.to_i) > Time.current &&
       DeviseTokenAuth::Concerns::User.tokens_match?(refresh_token_hash, refresh_token)
   end
 
