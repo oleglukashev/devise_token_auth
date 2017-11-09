@@ -152,7 +152,7 @@ module DeviseTokenAuth::Concerns::User
       expiry && token &&
 
       # ensure that the token has not yet expired
-      DateTime.strptime(expiry.to_s, '%s') > Time.current &&
+      DateTime.strptime(expiry.to_s, '%s').in_time_zone > Time.current &&
 
       # ensure that the token is valid
       DeviseTokenAuth::Concerns::User.tokens_match?(token_hash, token)
@@ -248,7 +248,7 @@ module DeviseTokenAuth::Concerns::User
     expiry = tokens_hash[client_id][:refresh_token_expiry]
     refresh_token_hash = tokens_hash[client_id][:refresh_token]
 
-    expiry && refresh_token && Time.at(expiry.to_i) > Time.current &&
+    expiry && refresh_token && Time.at(expiry.to_i).in_time_zone > Time.current &&
       DeviseTokenAuth::Concerns::User.tokens_match?(refresh_token_hash, refresh_token)
   end
 
@@ -315,7 +315,7 @@ module DeviseTokenAuth::Concerns::User
     if self.tokens
       self.tokens.delete_if do |cid, v|
         expiry = v[:expiry] || v["expiry"]
-        DateTime.strptime(expiry.to_s, '%s') < Time.current
+        DateTime.strptime(expiry.to_s, '%s').in_time_zone < Time.current
       end
     end
   end

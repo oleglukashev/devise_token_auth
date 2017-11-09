@@ -31,7 +31,7 @@ module DeviseTokenAuth
       raise UidNotProvidedError unless uid
       raise ClientNotProvidedError unless @client_id
 
-      user = uid && User.find_by(uid: uid)
+      user = uid && resource_class.find_by(uid: uid)
 
       if user && user.valid_refresh_token?(@refresh_token, @client_id)
         @resource = user
@@ -43,7 +43,7 @@ module DeviseTokenAuth
           token: BCrypt::Password.create(@token),
           expiry: (Time.current + @resource.token_lifespan).to_i,
           refresh_token: BCrypt::Password.create(@new_refresh_token),
-          refresh_token_expiry: (Time.current + DeviseTokenAuth.refresh_token_lifespan)
+          refresh_token_expiry: (Time.current + DeviseTokenAuth.refresh_token_lifespan).to_i
         }
 
         @resource.save

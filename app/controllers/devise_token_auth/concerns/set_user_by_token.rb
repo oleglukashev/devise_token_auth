@@ -124,8 +124,8 @@ module DeviseTokenAuth::Concerns::SetUserByToken
           # Use a blank string for the header to still be present and
           # being passed in a XHR response in case of
           # 304 Not Modified responses.
-          auth_header[DeviseTokenAuth.headers_names[:"access-token"]] = ' '
-          auth_header[DeviseTokenAuth.headers_names[:"expiry"]] = ' '
+          # auth_header[DeviseTokenAuth.headers_names[:"access-token"]] = ' '
+          # auth_header[DeviseTokenAuth.headers_names[:"expiry"]] = ' '
 
         # update Authorization response header with new token
         else
