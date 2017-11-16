@@ -152,7 +152,7 @@ module DeviseTokenAuth::Concerns::User
       expiry && token &&
 
       # ensure that the token has not yet expired
-      DateTime.strptime(expiry.to_s, '%s').in_time_zone > Time.current &&
+      Time.at(expiry.to_i).in_time_zone > Time.current &&
 
       # ensure that the token is valid
       DeviseTokenAuth::Concerns::User.tokens_match?(token_hash, token)
